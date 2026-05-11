@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, Param, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, UseGuards, Request, Param, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { TransactionsService } from './transactions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -17,6 +17,27 @@ export class TransactionsController {
   @Get('account/:accountId')
   async findAll(@Param('accountId') accountId: number) {
     return this.transactionsService.findAll(accountId);
+  }
+
+  @Post('manual/:accountId')
+  async createManual(@Param('accountId') accountId: number, @Body() body: any) {
+    return this.transactionsService.create({
+      ...body,
+      account: { id: accountId },
+      category: body.categoryId ? { id: body.categoryId } : null,
+      bookingDate: new Date(body.bookingDate),
+      valueDate: body.valueDate ? new Date(body.valueDate) : new Date(body.bookingDate)
+    });
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: number, @Body() body: any) {
+    const updateData: any = { ...body };
+    if (body.categoryId !== undefined) {
+      updateData.category = body.categoryId ? { id: body.categoryId } : null;
+      delete updateData.categoryId;
+    }
+    return this.transactionsService.update(id, updateData);
   }
 
   @Post('import/:accountId')
@@ -64,7 +85,7 @@ export class TransactionsController {
 
   @Post('confirm-import/:accountId')
   async confirmImport(@Param('accountId') accountId: number, @Body() body: any) {
-    const { transactions, newRules } = body;
+    const { transactions } = body;
 
     const processed = transactions.map(t => ({
       ...t,

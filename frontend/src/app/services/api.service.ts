@@ -45,6 +45,14 @@ export class ApiService {
     return this.http.get<any[]>(`${this.baseUrl}/transactions/account/${accountId}`);
   }
 
+  createManualTransaction(accountId: number, data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/transactions/manual/${accountId}`, data);
+  }
+
+  updateTransaction(id: number, data: any): Observable<any> {
+    return this.http.patch<any>(`${this.baseUrl}/transactions/${id}`, data);
+  }
+
   importCsv(accountId: number, file: File): Observable<any[]> {
     const formData = new FormData();
     formData.append('file', file);

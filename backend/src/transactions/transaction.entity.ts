@@ -34,6 +34,9 @@ export class Transaction {
   @Column({ default: false })
   isFixedCost: boolean;
 
+  @Column({ nullable: true })
+  comment: string;
+
   @ManyToOne(() => BankAccount, (account) => account.transactions)
   account: BankAccount;
 

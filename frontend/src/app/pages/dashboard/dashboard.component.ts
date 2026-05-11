@@ -6,11 +6,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { Router, RouterModule } from '@angular/router';
 import { BaseChartDirective } from 'ng2-charts';
-import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
+import { ChartConfiguration, ChartData } from 'chart.js';
+import { TransactionDialogComponent } from '../../components/transaction-dialog/transaction-dialog.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -23,6 +26,8 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
     MatToolbarModule,
     MatSelectModule,
     MatFormFieldModule,
+    MatDialogModule,
+    MatTooltipModule,
     FormsModule,
     RouterModule,
     BaseChartDirective
@@ -61,9 +66,14 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
           </mat-select>
         </mat-form-field>
 
-        <button mat-raised-button color="accent" *ngIf="selectedAccountId" [routerLink]="['/import', selectedAccountId]">
-          Import Transactions
-        </button>
+        <div class="actions">
+          <button mat-raised-button color="accent" *ngIf="selectedAccountId" [routerLink]="['/import', selectedAccountId]">
+            <mat-icon>upload</mat-icon> Import Sparkasse CSV
+          </button>
+          <button mat-raised-button color="primary" *ngIf="selectedAccountId" (click)="addManualTransaction()">
+            <mat-icon>add</mat-icon> Add Transaction
+          </button>
+        </div>
       </div>
 
       <div class="stats" *ngIf="selectedAccountId && categories.length > 0">
@@ -88,23 +98,38 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
                   <tr>
                       <th>Date</th>
                       <th>Partner</th>
-                      <th>Purpose</th>
+                      <th>Purpose / Comment</th>
                       <th>Category</th>
                       <th>Amount</th>
+                      <th>Actions</th>
                   </tr>
               </thead>
               <tbody>
                   <tr *ngFor="let t of transactions">
                       <td>{{t.bookingDate | date}}</td>
                       <td>{{t.partnerName}}</td>
-                      <td>{{t.purpose}}</td>
-                      <td>{{t.category?.name || 'Uncategorized'}}</td>
+                      <td>
+                        <strong>{{t.purpose}}</strong>
+                        <div *ngIf="t.comment" class="comment">
+                           <mat-icon class="comment-icon">notes</mat-icon> {{t.comment}}
+                        </div>
+                      </td>
+                      <td>
+                        <span [class.fixed-badge]="t.isFixedCost" [matTooltip]="t.isFixedCost ? 'Fixed Cost' : ''">
+                          {{t.category?.name || 'Uncategorized'}}
+                        </span>
+                      </td>
                       <td [class.negative]="t.amount < 0" [class.positive]="t.amount > 0">
                         {{t.amount | currency:'EUR'}}
                       </td>
+                      <td>
+                        <button mat-icon-button (click)="editTransaction(t)" color="primary">
+                          <mat-icon>edit</mat-icon>
+                        </button>
+                      </td>
                   </tr>
                   <tr *ngIf="transactions.length === 0">
-                    <td colspan="5" style="text-align: center;">No transactions found for this period.</td>
+                    <td colspan="6" style="text-align: center;">No transactions found for this period.</td>
                   </tr>
               </tbody>
           </table>
@@ -118,6 +143,9 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
     .stats { margin-bottom: 20px; }
     .negative { color: #f44336; font-weight: bold; }
     .positive { color: #4caf50; font-weight: bold; }
+    .comment { font-size: 0.85em; color: #666; font-style: italic; display: flex; align-items: center; gap: 4px; }
+    .comment-icon { font-size: 14px; width: 14px; height: 14px; }
+    .fixed-badge { border-bottom: 2px solid #ff4081; padding-bottom: 2px; }
     .styled-table {
         width: 100%;
         border-collapse: collapse;
@@ -143,6 +171,7 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
     .styled-table tbody tr:last-of-type {
         border-bottom: 2px solid #3f51b5;
     }
+    .actions { display: flex; gap: 10px; }
   `]
 })
 export class DashboardComponent implements OnInit {
@@ -173,7 +202,7 @@ export class DashboardComponent implements OnInit {
     ]
   };
 
-  constructor(private apiService: ApiService, private router: Router) {}
+  constructor(private apiService: ApiService, private router: Router, private dialog: MatDialog) {}
 
   ngOnInit() {
     this.apiService.getAccounts().subscribe(accs => {
@@ -228,6 +257,34 @@ export class DashboardComponent implements OnInit {
               { data: actualData, label: 'Actual Spending', backgroundColor: '#ff4081' }
           ]
       };
+  }
+
+  addManualTransaction() {
+    const dialogRef = this.dialog.open(TransactionDialogComponent, {
+      data: { categories: this.categories }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.apiService.createManualTransaction(this.selectedAccountId!, result).subscribe(() => {
+          this.loadData();
+        });
+      }
+    });
+  }
+
+  editTransaction(transaction: any) {
+    const dialogRef = this.dialog.open(TransactionDialogComponent, {
+      data: { transaction, categories: this.categories }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.apiService.updateTransaction(transaction.id, result).subscribe(() => {
+          this.loadData();
+        });
+      }
+    });
   }
 
   logout() {

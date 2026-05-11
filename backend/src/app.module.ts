@@ -30,19 +30,10 @@ import { BudgetsModule } from './budgets/budgets.module';
         password: configService.get<string>('DB_PASSWORD', 'password'),
         database: configService.get<string>('DB_DATABASE', 'bankapp'),
         entities: [User, BankAccount, Category, Transaction, Budget, CategoryRule],
-        synchronize: true, // Set to false in production
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),
-    // For SQLite testing, you can swap the above with:
-    /*
-    TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'database.sqlite',
-      entities: [User, BankAccount, Category, Transaction, Budget, CategoryRule],
-      synchronize: true,
-    }),
-    */
     AuthModule,
     UsersModule,
     AccountsModule,
@@ -54,3 +45,4 @@ import { BudgetsModule } from './budgets/budgets.module';
   providers: [],
 })
 export class AppModule {}
+>>>>>>> REPLACE

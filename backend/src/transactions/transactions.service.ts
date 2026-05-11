@@ -21,9 +21,18 @@ export class TransactionsService {
     });
   }
 
+  async findOne(id: number): Promise<Transaction | null> {
+    return this.transactionsRepository.findOne({ where: { id }, relations: ['category'] });
+  }
+
   async create(data: Partial<Transaction>): Promise<Transaction> {
     const transaction = this.transactionsRepository.create(data);
     return this.transactionsRepository.save(transaction);
+  }
+
+  async update(id: number, data: Partial<Transaction>): Promise<Transaction | null> {
+    await this.transactionsRepository.update(id, data);
+    return this.findOne(id);
   }
 
   async bulkCreate(transactions: Partial<Transaction>[]): Promise<Transaction[]> {
@@ -31,7 +40,6 @@ export class TransactionsService {
   }
 
   async parseSparkasseCsv(csvData: string): Promise<any[]> {
-    // Sparkasse CSV uses semicolon delimiter and " as quote
     const records = parse(csvData, {
       columns: true,
       delimiter: ';',
